@@ -1,18 +1,21 @@
 #!/bin/env php
 <?php
-define("DIR_TABLE_STYLE", "width:728px; margin-left:1px");
-define("DIR_TABLE_CELLPADDING", "2");
-define("SUGGESTIONS_TABLE_STYLE", "margin-top:-1px");
-define("SUGGESTIONS_TABLE_CELLPADDING", "2");
-define("LANG_SUGGESTIONS_TABLE_WIDTH", "100%");
-define("LANG_SUGGESTIONS_TABLE_BORDER", "0");
-define("TABLE_STYLE", "table-layout:fixed; margin-top:-1px");
-define("TABLE_WIDTH", "730");
-define("TR_ID_PREFIX", "tr");
-define("SEARCH_PARAM", "s");
+/* defining */ {
+    define("VERSION", -1);
+    define("DIR_TABLE_STYLE", "width:728px; margin-left:1px");
+    define("DIR_TABLE_CELLPADDING", "2");
+    define("SUGGESTIONS_TABLE_STYLE", "margin-top:-1px");
+    define("SUGGESTIONS_TABLE_CELLPADDING", "2");
+    define("LANG_SUGGESTIONS_TABLE_WIDTH", "100%");
+    define("LANG_SUGGESTIONS_TABLE_BORDER", "0");
+    define("TABLE_STYLE", "table-layout:fixed; margin-top:-1px");
+    define("TABLE_WIDTH", "730");
+    define("TR_ID_PREFIX", "tr");
+    define("SEARCH_PARAM", "s");
+}
 
 
-/* CONFIG */ {
+/* Configuration */ {
     $LANG_FROM = "en";
     $LANG_TO = "de";
     $VERBOSE = false;
@@ -25,85 +28,96 @@ define("SEARCH_PARAM", "s");
     $RESULTS = PHP_INT_MAX;
 }
 
-$flagsv = [];
-array_shift($argv);
-while (1) {
-    $s = reset($argv);
-    if ($s{0} == "-" && isset($s{1}) && $s{1} != "-") {
-        $flagsv[] = array_shift($argv);
-    } else {
-        break;
-    }
-}
-$flags = str_split(str_replace("-", "", implode("", $flagsv)));
-
-$paramValues = [];
-$i = 0;
-foreach ($flags as $f) {
-    if (ctype_alpha($f) && strtoupper($f) == $f) {
-        $paramValues[$f] = array_shift($argv);
-    }
-}
-unset($i);
-
-if (in_array("v", $flags)) {
-    $VERBOSE = true;
-}
-
-if (in_array("p", $flags) || in_array("P", $flags)) {
-    $FILE = fopen($filename = tempnam(sys_get_temp_dir(), "dc_"), "r+");
-    if (in_array("P", $flags)) {
-        $pager = trim(@shell_exec("/usr/bin/which {$paramValues['P']} 2> /dev/null"));
-        if ($pager == null) {
-            fwrite(STDERR, "Pager '{$paramValues['P']}' not found using $PAGER\n");
-            $pager = $PAGER;
+/* Commandline Parsing */ {
+    $flagsv = [];
+    array_shift($argv);
+    while (1) {
+        $s = reset($argv);
+        if ($s{0} == "-" && isset($s{1}) && $s{1} != "-") {
+            $flagsv[] = array_shift($argv);
+        } else {
+            break;
         }
-        $PAGER = $pager;
+    }
+    $flags = str_split(str_replace("-", "", implode("", $flagsv)));
+
+    $paramValues = [];
+    $i = 0;
+    foreach ($flags as $f) {
+        if (ctype_alpha($f) && strtoupper($f) == $f) {
+            $paramValues[$f] = array_shift($argv);
+        }
+    }
+    unset($i);
+    
+    if (in_array("h", $flags)) {
+        usageExit(0);
+    }
+    if (in_array("e", $flags)) {
+        examples(0);
+    }
+
+    if (in_array("v", $flags)) {
+        $VERBOSE = true;
+    }
+
+    if (in_array("p", $flags) || in_array("P", $flags)) {
+        $FILE = fopen($filename = tempnam(sys_get_temp_dir(), "dcc_"), "r+");
+        if (in_array("P", $flags)) {
+            $pager = trim(@shell_exec("/usr/bin/which {$paramValues['P']} 2> /dev/null"));
+            if ($pager == null) {
+                fwrite(STDERR, "Pager '{$paramValues['P']}' not found using $PAGER\n");
+                $pager = $PAGER;
+            }
+            $PAGER = $pager;
+        }
+    }
+    if (in_array("i", $flags) || in_array("I", $flags)) {
+        $RESULTS = 1;
+        if (in_array("I", $flags)) {
+            $RESULTS = intval($paramValues['I'], 10);
+        }
     }
 }
-if (in_array("i", $flags) || in_array("I", $flags)) {
-    $RESULTS = 1;
-    if (in_array("I", $flags)) {
-        $RESULTS = intval($paramValues['I'], 10);
+
+/* Url Buildng */ {
+    $url = "";
+    if (in_array("n", $flags)) {
+        $url .= "http";
+    } else {
+        $url .= "https";
+    }
+    $url .= "://";
+
+    if (in_array("F", $flags)) {
+        $LANG_FROM = $paramValues['F'];
+    }
+    if (in_array("T", $flags)) {
+        $LANG_TO = $paramValues['T'];
+    }
+
+    if (in_array("g", $flags) || $LANG_FROM == $LANG_TO) {
+        $url .= "www.";
+    } else {
+        $url .= $LANG_FROM . "-" . $LANG_TO . ".";
+    }
+    if (empty(implode(" ", $argv))) {
+        usageExit(1, "Missing search term");
+    }
+
+
+    $url .= "dict.cc/?" . SEARCH_PARAM . "=" . urlencode(implode(" ", $argv));
+}
+
+/* Data Fetching */ {
+    $doc = @file_get_contents($url);
+    if (empty($doc)) {
+        echo "No internet connection\n";
+        exit(1);
     }
 }
 
-# Url buildng
-$url = "";
-if (in_array("h", $flags)) {
-    $url .= "http";
-} else {
-    $url .= "https";
-}
-$url .= "://";
-
-if (in_array("F", $flags)) {
-    $LANG_FROM = $paramValues['F'];
-}
-if (in_array("T", $flags)) {
-    $LANG_TO = $paramValues['T'];
-}
-
-if (in_array("g", $flags)) {
-    $url .= "www.";
-} else {
-    $url .= $LANG_FROM . "-" . $LANG_TO . ".";
-}
-if (empty(implode(" ", $argv))) {
-    echo "Missing search term\n";
-    exit(1);
-}
-
-
-$url .= "dict.cc/?" . SEARCH_PARAM . "=" . urlencode(implode(" ", $argv));
-
-$doc = @file_get_contents($url);
-if (empty($doc)) {
-    echo "No internet connection\n";
-    exit(1);
-}
-
-# Parsing
+# Data Parsing
 
 $dom = new DOMDocument();
 @$dom->loadHTML($doc);
@@ -239,4 +253,71 @@ if (isset($filename)) {
 
 function mb_str_pad($input, $pad_length, $pad_str = ' ', $pad_type = STR_PAD_RIGHT) {
     return str_pad($input, $pad_length - (mb_strlen($input) - strlen($input)), $pad_str, $pad_type);
+}
+
+
+function usageExit($e_code, $e_msg = null) {
+    if ($e_msg != null) {
+        $e_msg = "\nError: " . $e_msg."\n";
+    } else {
+        $e_msg = "";
+    }
+    
+    $v = VERSION;
+    echo <<<EOF
+dcc - dict.cc cli client. Version: $v
+    $e_msg
+   dcc -[iIpPhFTgvhe] word [more words]*
+    
+    i   show only the first translation
+    I   show only the first n translations
+    p   show results in a pager (default: less)
+    P   show results in a pager and set the pager
+    n   no encryption use http instead of https
+    F   set the 'from language' (default: en)
+    T   set the 'to language' (default: de)
+    g   don't use any languages (use dict.cc's default (en-de));
+    v   be verbose
+    h   show help
+    e   show examples
+
+
+EOF;
+    if ($e_code >= 0) {
+        exit($e_code);
+    }
+}
+
+function examples(){
+    $v = VERSION;
+    echo <<<EOF
+dcc - dict.cc cli client. Version: $v
+    
+    Examples:
+    
+    Translate 'list' from english to español:
+    dcc -FT en es list
+    
+    Translate 'list' from english to español and show only the first 2 results:
+    dcc -FTI en es 2 list
+    or 
+    dcc -FIT en 2 es  list
+    or 
+    dcc -ITF 2 es en  list
+    
+    search globaly for results of the word 'mother'
+    dcc -g mother
+            
+    search for 'Mutter' from de to en using the default pager (less)
+    dcc -FTp de en Mutter
+            
+    search for 'Mutter' from de to en using 'more' as a pager
+    dcc -FTP de en more Mutter
+            
+    search for 'Mutter' from de to en using 'vim' as a pager
+    dcc -PFT vim de en Mutter
+
+
+EOF;
+    exit (0);
 }

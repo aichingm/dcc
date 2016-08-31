@@ -26,6 +26,7 @@
     $PAGER = "/usr/bin/less";
     $SWITCH = false;
     $RESULTS = PHP_INT_MAX;
+    $REVERSE = false;
 }
 
 /* Commandline Parsing */ {
@@ -59,6 +60,9 @@
 
     if (in_array("v", $flags)) {
         $VERBOSE = true;
+    }
+    if (in_array("r", $flags)) {
+        $REVERSE = true;
     }
 
     if (in_array("p", $flags) || in_array("P", $flags)) {
@@ -203,7 +207,12 @@ foreach ($myTrs as $wordLen => $array) {
 }
 
 # Printing
-
+if ($REVERSE) {
+    foreach ($myTrans as &$value) {
+        $value = array_reverse($value);
+    }
+    $myTrans = array_reverse($myTrans);
+}
 $rIndex = 0;
 
 foreach ($myTrans as $value) {
@@ -262,12 +271,12 @@ function usageExit($e_code, $e_msg = null) {
     } else {
         $e_msg = "";
     }
-    
+
     $v = VERSION;
     echo <<<EOF
 dcc - dict.cc cli client. Version: $v
     $e_msg
-   dcc -[iIpPhFTgvhe] word [more words]*
+   dcc -[iIpPhFTgvher] word [more words]*
     
     i   show only the first translation
     I   show only the first n translations
@@ -280,6 +289,7 @@ dcc - dict.cc cli client. Version: $v
     v   be verbose
     h   show help
     e   show examples
+    r   reverse the order of the outputed list
 
 
 EOF;

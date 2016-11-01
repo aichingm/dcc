@@ -1,6 +1,6 @@
 # Maintainer: Mario Aichinger <aichingm@gmail.com>
 _pkgname=dcc
-_script=$_pkgname
+_script="$_pkgname"".php"
 pkgname="$_pkgname""-git"
 pkgver=20160806103040
 pkgrel=1

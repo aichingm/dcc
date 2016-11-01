@@ -1,7 +1,9 @@
 #!/bin/env php
 <?php
-/* defining */ {
+/* Defining */
+{
     define("VERSION", -1);
+    define("USER_CONFIG", ".config/dcc/dcc.ini");
     define("DIR_TABLE_STYLE", "width:728px; margin-left:1px");
     define("DIR_TABLE_CELLPADDING", "2");
     define("SUGGESTIONS_TABLE_STYLE", "margin-top:-1px");
@@ -14,27 +16,43 @@
     define("SEARCH_PARAM", "s");
 }
 
+/* Configuration */
+{
+    {
+        $conf = array();
+        if (is_file(getenv("HOME") . "/" . USER_CONFIG)) {
+            $conf = parse_ini_file(getenv("HOME") . "/" . USER_CONFIG, false, INI_SCANNER_TYPED);
+        }
+        $c = function($name, $default) {
+            global $conf;
+            return isset($conf[$name]) ? $conf[$name] : $default;
+        };
+    }
 
-/* Configuration */ {
-    $LANG_FROM = "en";
-    $LANG_TO = "de";
+    $DEFAULT_FLAGS = "-" . $c("DEFAULT_FLAGS", "");
+    $LANG_FROM = $c("LANG_FROM", "en");
+    $LANG_TO = $c("LANG_TO", "de");
     $VERBOSE = false;
-    $PADDING = 50;
-    $LEFT_PADDING = 3;
-    $PED_CHAR = ".";
+    $PADDING = $c("PADDING", 50);
+    $LEFT_PADDING = $c("LEFT_PADDING", 3);
+    $PED_CHAR = $c("PAD_CHAR", ".");
     $FILE = STDOUT;
-    $PAGER = "/usr/bin/less";
+    $PAGER = $c("PAGER", "/usr/bin/less");
     $SWITCH = false;
-    $RESULTS = PHP_INT_MAX;
-    $REVERSE = false;
+    $RESULTS = $c("RESULTS", PHP_INT_MAX);
+    $REVERSE = $c("REVERSE", false);
+    unset($c);
+    unset($conf);
 }
 
-/* Commandline Parsing */ {
+/* Commandline Parsing */
+{
     $flagsv = [];
     array_shift($argv);
+    array_unshift($argv, $DEFAULT_FLAGS);
     while (1) {
         $s = reset($argv);
-        if ($s{0} == "-" && isset($s{1}) && $s{1} != "-") {
+        if ($s{0} == "-" && (!isset($s{1}) || (isset($s{1}) && $s{1} != "-"))) {
             $flagsv[] = array_shift($argv);
         } else {
             break;
@@ -50,7 +68,7 @@
         }
     }
     unset($i);
-    
+
     if (in_array("h", $flags)) {
         usageExit(0);
     }
@@ -58,9 +76,14 @@
         examples(0);
     }
 
+    if (in_array("c", $flags)) {
+        printDefaultConfiguration();
+    }
+
     if (in_array("v", $flags)) {
         $VERBOSE = true;
     }
+
     if (in_array("r", $flags)) {
         $REVERSE = true;
     }
@@ -84,7 +107,8 @@
     }
 }
 
-/* Url Buildng */ {
+/* Url Buildng */
+{
     $url = "";
     if (in_array("n", $flags)) {
         $url .= "http";
@@ -113,7 +137,8 @@
     $url .= "dict.cc/?" . SEARCH_PARAM . "=" . urlencode(implode(" ", $argv));
 }
 
-/* Data Fetching */ {
+/* Data Fetching */
+{
     $doc = @file_get_contents($url);
     if (empty($doc)) {
         echo "No internet connection\n";
@@ -127,7 +152,7 @@ $dom = new DOMDocument();
 @$dom->loadHTML($doc);
 $tables = $dom->getElementsByTagName("table");
 
-#searching tables
+# Searching Tables
 $myTable = null;
 $dirTable = null;
 $sugTable = null;
@@ -146,7 +171,7 @@ foreach ($tables as $table) {
         $sugTable = $table->childNodes->item(0)->childNodes->item(2);
     }
 }
-# check direction of the translation
+# Check direction of the translation
 $dirstr = $dirTable->childNodes->item(0)->childNodes->item(0)->childNodes->item(0)->childNodes->item(2)->nodeValue;
 if ($dirstr == "←") { # equals unicode <-
     $SWITCH = true;
@@ -155,7 +180,7 @@ if ($dirstr == "←") { # equals unicode <-
     
 }
 
-#check if translations found
+# Check if translations found
 if ($myTable == null) {
     echo "Sorry, no translations found!\n";
     if ($sugTable != null) {
@@ -170,7 +195,7 @@ if ($myTable == null) {
     exit(1);
 }
 
-#find translation rows
+# Find translation rows
 $trs = $myTable->getElementsByTagName("tr");
 $myTrs = [];
 
@@ -240,7 +265,7 @@ foreach ($myTrans as $value) {
     }
 }
 
-#running pager
+# Running pager
 
 if (isset($filename)) {
     fclose($FILE);
@@ -248,7 +273,7 @@ if (isset($filename)) {
     if ($pid == -1) {
         
     } else if ($pid) {
-        // we are the parent and we are waiting
+// we are the parent and we are waiting
         pcntl_waitpid($pid, $status);
         unlink($filename);
     } else {
@@ -264,10 +289,29 @@ function mb_str_pad($input, $pad_length, $pad_str = ' ', $pad_type = STR_PAD_RIG
     return str_pad($input, $pad_length - (mb_strlen($input) - strlen($input)), $pad_str, $pad_type);
 }
 
+function printDefaultConfiguration() {
+    $USER_CONFIG = USER_CONFIG;
+    $PHP_INT_MAX = PHP_INT_MAX;
+    $conf = <<<EOF
+; dcc user configuration (~/$USER_CONFIG)
+DEFAULT_FLAGS=
+LANG_FROM=en
+LANG_TO=de
+PAGER=/usr/bin/less
+REVERSE=false
+PADDING=50
+LEFT_PADDING=3
+PED_CHAR=.
+RESULTS=$PHP_INT_MAX
+
+EOF;
+    echo $conf;
+    exit(0);
+}
 
 function usageExit($e_code, $e_msg = null) {
     if ($e_msg != null) {
-        $e_msg = "\nError: " . $e_msg."\n";
+        $e_msg = "\nError: " . $e_msg . "\n";
     } else {
         $e_msg = "";
     }
@@ -276,7 +320,7 @@ function usageExit($e_code, $e_msg = null) {
     echo <<<EOF
 dcc - dict.cc cli client. Version: $v
     $e_msg
-   dcc -[iIpPhFTgvher] word [more words]*
+   dcc -[iIpPhFTgvcher] word [more words]*
     
     i   show only the first translation
     I   show only the first n translations
@@ -287,6 +331,7 @@ dcc - dict.cc cli client. Version: $v
     T   set the 'to language' (default: de)
     g   don't use any languages (use dict.cc's default (en-de));
     v   be verbose
+    c   print a default configuration file
     h   show help
     e   show examples
     r   reverse the order of the outputed list
@@ -298,7 +343,7 @@ EOF;
     }
 }
 
-function examples(){
+function examples() {
     $v = VERSION;
     echo <<<EOF
 dcc - dict.cc cli client. Version: $v
@@ -329,5 +374,5 @@ dcc - dict.cc cli client. Version: $v
 
 
 EOF;
-    exit (0);
+    exit(0);
 }

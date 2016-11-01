@@ -22,6 +22,6 @@ pkgver() {
 package() {
     cd "$srcdir/$_pkgname"
 _commit_s=$(git rev-parse --short HEAD)
-    sed -i "4s/.*/    define(\"VERSION\", \"$_commit_s\");/" $_script
+    sed -i "5s/.*/    define(\"VERSION\", \"$_commit_s\");/" $_script
     install -Dm755 $_script "$pkgdir/usr/bin/dcc"
 }

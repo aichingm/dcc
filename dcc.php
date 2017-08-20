@@ -191,6 +191,10 @@ if ($myTable == null) {
                 echo "\n";
             }
         }
+        if(count($sugTable->getElementsByTagName("a")) % 2 == 1){
+            echo "\n";
+        }
+
     }
     exit(1);
 }

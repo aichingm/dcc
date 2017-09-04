@@ -70,7 +70,7 @@ vim ~/.config/dcc/dcc.ini && echo vim rules!!1
 * DEFAULT_FLAGS: a list of flags which should be used on every call to dcc.
 * LANG_FROM: the language which the words are from.
 * LANG_TO: the language you don't know or speak.
-* PAGER: Don't change this if you don't know what a page is.
+* PAGER: Don't change this if you don't know what a pager is.
 * REVERSE: set REVERSE to true for whatever reason you can find :confounded:
 * PADDING: the amount of PAD_CHARs which will be used to separate the words.
 * LEFT_PADDING: how much spaces do you want on the left side of the terminal?

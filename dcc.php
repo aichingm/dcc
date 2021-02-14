@@ -52,7 +52,7 @@
     array_unshift($argv, $DEFAULT_FLAGS);
     while (1) {
         $s = reset($argv);
-        if ($s{0} == "-" && (!isset($s{1}) || (isset($s{1}) && $s{1} != "-"))) {
+        if ($s[0] == "-" && (!isset($s[1]) || (isset($s[1]) && $s[1] != "-"))) {
             $flagsv[] = array_shift($argv);
         } else {
             break;
